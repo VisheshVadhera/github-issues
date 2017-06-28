@@ -3,6 +3,7 @@ package com.vishesh.githubissues.url;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -22,10 +23,18 @@ import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
 import butterknife.Unbinder;
+import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
+import io.reactivex.functions.Action;
+import io.reactivex.functions.Consumer;
+import io.reactivex.observers.DisposableSingleObserver;
+import io.reactivex.schedulers.Schedulers;
 
 public class GitHubUrlActivity
-        extends AppCompatActivity
-        implements GitHubUrlPresenter.GitHubUrlView {
+        extends AppCompatActivity {
+
+    private CompositeDisposable compositeDisposable;
 
     @BindView(R.id.edit_issues_url)
     EditText editTextIssuesUrl;
@@ -37,7 +46,7 @@ public class GitHubUrlActivity
     private Unbinder unbinder;
 
     @Inject
-    GitHubUrlPresenter gitHubUrlPresenter;
+    GitHubUrlViewModel gitHubUrlViewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,43 +57,77 @@ public class GitHubUrlActivity
 
         ((MainApplication) getApplication()).getInjector().inject(this);
 
-        gitHubUrlPresenter.setView(this);
+        compositeDisposable = new CompositeDisposable();
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
         unbinder.unbind();
-        gitHubUrlPresenter.onDestroy();
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (compositeDisposable != null) {
+            compositeDisposable.dispose();
+        }
     }
 
     @OnClick(R.id.button_load_issues)
     void onLoadIssuesClicked() {
         String repoUrl = editTextIssuesUrl.getText().toString();
-        gitHubUrlPresenter.onLoadIssuesClicked(repoUrl);
+
+        if (TextUtils.isEmpty(repoUrl)) {
+            showErrorMessage("Invalid Url. Please enter a valid Repo Url");
+        } else {
+            compositeDisposable.add(gitHubUrlViewModel
+                    .getIssues(repoUrl)
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .doFinally(new Action() {
+                        @Override
+                        public void run() throws Exception {
+                            hideLoader();
+                        }
+                    })
+                    .doOnSubscribe(new Consumer<Disposable>() {
+                        @Override
+                        public void accept(@io.reactivex.annotations.NonNull Disposable disposable) throws Exception {
+                            showLoader();
+                        }
+                    })
+                    .subscribeWith(new DisposableSingleObserver<List<Issue>>() {
+                        @Override
+                        public void onSuccess(@io.reactivex.annotations.NonNull List<Issue> issues) {
+                            showIssues(issues);
+                        }
+
+                        @Override
+                        public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+                            showErrorMessage(e.getMessage());
+                        }
+                    }));
+        }
     }
 
-    @Override
-    public void showErrorMessage(String errorMessage) {
+    private void showErrorMessage(String errorMessage) {
         Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
     }
 
-    @Override
-    public void showLoader() {
+    private void showLoader() {
         viewLoader.setVisibility(View.VISIBLE);
         buttonLoadIssues.setEnabled(false);
         editTextIssuesUrl.setEnabled(false);
     }
 
-    @Override
-    public void hideLoader() {
+    private void hideLoader() {
         viewLoader.setVisibility(View.GONE);
         buttonLoadIssues.setEnabled(true);
         editTextIssuesUrl.setEnabled(true);
     }
 
-    @Override
-    public void showIssues(List<Issue> issues) {
+    private void showIssues(List<Issue> issues) {
         Intent intent = IssuesActivity.createIntent(this, issues);
         startActivity(intent);
     }
