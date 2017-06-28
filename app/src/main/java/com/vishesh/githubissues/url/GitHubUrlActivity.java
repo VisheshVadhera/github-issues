@@ -25,9 +25,6 @@ import butterknife.OnClick;
 import butterknife.Unbinder;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
-import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Action;
-import io.reactivex.functions.Consumer;
 import io.reactivex.observers.DisposableSingleObserver;
 import io.reactivex.schedulers.Schedulers;
 
@@ -64,11 +61,6 @@ public class GitHubUrlActivity
     protected void onDestroy() {
         super.onDestroy();
         unbinder.unbind();
-    }
-
-    @Override
-    protected void onStop() {
-        super.onStop();
         if (compositeDisposable != null) {
             compositeDisposable.dispose();
         }
@@ -81,30 +73,21 @@ public class GitHubUrlActivity
         if (TextUtils.isEmpty(repoUrl)) {
             showErrorMessage("Invalid Url. Please enter a valid Repo Url");
         } else {
+            showLoader();
             compositeDisposable.add(gitHubUrlViewModel
                     .getIssues(repoUrl)
                     .subscribeOn(Schedulers.io())
                     .observeOn(AndroidSchedulers.mainThread())
-                    .doFinally(new Action() {
-                        @Override
-                        public void run() throws Exception {
-                            hideLoader();
-                        }
-                    })
-                    .doOnSubscribe(new Consumer<Disposable>() {
-                        @Override
-                        public void accept(@io.reactivex.annotations.NonNull Disposable disposable) throws Exception {
-                            showLoader();
-                        }
-                    })
                     .subscribeWith(new DisposableSingleObserver<List<Issue>>() {
                         @Override
                         public void onSuccess(@io.reactivex.annotations.NonNull List<Issue> issues) {
+                            hideLoader();
                             showIssues(issues);
                         }
 
                         @Override
                         public void onError(@io.reactivex.annotations.NonNull Throwable e) {
+                            hideLoader();
                             showErrorMessage(e.getMessage());
                         }
                     }));
