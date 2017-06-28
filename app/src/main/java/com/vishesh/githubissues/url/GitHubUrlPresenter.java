@@ -65,7 +65,7 @@ class GitHubUrlPresenter {
         }
     }
 
-    void onDestroy() {
+    void onStop() {
         if (disposable != null && !disposable.isDisposed()) {
             disposable.dispose();
         }

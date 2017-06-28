@@ -52,10 +52,15 @@ public class GitHubUrlActivity
     }
 
     @Override
+    protected void onStop() {
+        super.onStop();
+        gitHubUrlPresenter.onStop();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
         unbinder.unbind();
-        gitHubUrlPresenter.onDestroy();
     }
 
     @OnClick(R.id.button_load_issues)
