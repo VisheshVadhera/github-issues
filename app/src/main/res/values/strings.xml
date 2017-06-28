@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Github Issues</string>
+
+    <string name="button_load_issues_text">Load Issues</string>
+
+    <string name="edit_issues_hint">Full repo name (e.g ReactiveX/RxAndroid)</string>
+
+</resources>
