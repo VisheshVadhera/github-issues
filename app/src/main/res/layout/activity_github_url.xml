@@ -15,7 +15,9 @@
         android:id="@+id/edit_issues_url"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="@string/edit_issues_hint"/>
+        android:hint="@string/edit_issues_hint"
+        android:inputType="textNoSuggestions"
+        />
 
     <Button
         android:id="@+id/button_load_issues"

@@ -3,7 +3,9 @@ package com.vishesh.githubissues.url;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.text.TextUtils;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -21,20 +23,16 @@ import javax.inject.Inject;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import butterknife.OnClick;
 import butterknife.Unbinder;
+import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.annotations.NonNull;
 import io.reactivex.disposables.CompositeDisposable;
-import io.reactivex.disposables.Disposable;
-import io.reactivex.functions.Action;
-import io.reactivex.functions.Consumer;
-import io.reactivex.observers.DisposableSingleObserver;
 import io.reactivex.schedulers.Schedulers;
 
 public class GitHubUrlActivity
         extends AppCompatActivity {
 
+    private static final String TAG = "GitHubUrlActivity";
     private CompositeDisposable compositeDisposable;
 
     @BindView(R.id.edit_issues_url)
@@ -59,6 +57,47 @@ public class GitHubUrlActivity
         ((MainApplication) getApplication()).getInjector().inject(this);
 
         compositeDisposable = new CompositeDisposable();
+
+        gitHubUrlViewModel.toObservable()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnNext(consumer -> Log.i(TAG, "Received consumer" + consumer))
+                .doOnError(throwable -> {
+                    Log.e(TAG, "Got error2 " + throwable.getMessage());
+                })
+                .doOnNext(consumer -> showLoader())
+                .onErrorResumeNext(throwable -> {
+                    hideLoader();
+                    showErrorMessage(throwable.getMessage());
+                    return Observable.empty();
+                })
+                .doOnNext(consumer -> Log.i(TAG, "Received consumer2 " + consumer))
+                .subscribe(
+                        issues -> {
+                            hideLoader();
+                            showIssues(issues);
+                        },
+                        throwable -> {
+                            throw new AssertionError(throwable.getMessage());
+                        });
+
+        editTextIssuesUrl.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                gitHubUrlViewModel.textChangeSubject()
+                        .onNext(s);
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+            }
+        });
     }
 
     @Override
@@ -70,7 +109,7 @@ public class GitHubUrlActivity
         }
     }
 
-    @OnClick(R.id.button_load_issues)
+    /*@OnClick(R.id.button_load_issues)
     void onLoadIssuesClicked() {
         String repoUrl = editTextIssuesUrl.getText().toString();
 
@@ -105,7 +144,7 @@ public class GitHubUrlActivity
                         }
                     }));
         }
-    }
+    }*/
 
     private void showErrorMessage(String errorMessage) {
         Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
@@ -113,14 +152,14 @@ public class GitHubUrlActivity
 
     private void showLoader() {
         viewLoader.setVisibility(View.VISIBLE);
-        buttonLoadIssues.setEnabled(false);
-        editTextIssuesUrl.setEnabled(false);
+//        buttonLoadIssues.setEnabled(false);
+//        editTextIssuesUrl.setEnabled(false);
     }
 
     private void hideLoader() {
         viewLoader.setVisibility(View.GONE);
-        buttonLoadIssues.setEnabled(true);
-        editTextIssuesUrl.setEnabled(true);
+//        buttonLoadIssues.setEnabled(true);
+//        editTextIssuesUrl.setEnabled(true);
     }
 
     private void showIssues(List<Issue> issues) {

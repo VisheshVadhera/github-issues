@@ -2,7 +2,7 @@ package com.vishesh.githubissues.common;
 
 import java.util.List;
 
-import io.reactivex.Single;
+import io.reactivex.Observable;
 import retrofit2.http.GET;
 import retrofit2.http.Path;
 
@@ -12,7 +12,11 @@ import retrofit2.http.Path;
 
 public interface GitHubService {
 
-    @GET("repos/{owner}/{repo}/issues")
+    /*@GET("repos/{owner}/{repo}/issues")
     Single<List<Issue>> getIssuesByRepo(@Path("owner") String owner,
-                                        @Path("repo") String repo);
+                                        @Path("repo") String repo);*/
+
+    @GET("repos/{owner}/{repo}/issues")
+    Observable<List<Issue>> getIssuesByRepo(@Path("owner") String owner,
+                                            @Path("repo") String repo);
 }
