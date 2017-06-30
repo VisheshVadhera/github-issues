@@ -3,15 +3,14 @@ package com.vishesh.githubissues.url;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
 import com.github.ybq.android.spinkit.SpinKitView;
+import com.jakewharton.rxbinding2.widget.RxTextView;
+import com.jakewharton.rxbinding2.widget.TextViewTextChangeEvent;
 import com.vishesh.githubissues.MainApplication;
 import com.vishesh.githubissues.R;
 import com.vishesh.githubissues.common.Issue;
@@ -28,6 +27,7 @@ import io.reactivex.Observable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.schedulers.Schedulers;
+import retrofit2.HttpException;
 
 public class GitHubUrlActivity
         extends AppCompatActivity {
@@ -58,28 +58,35 @@ public class GitHubUrlActivity
 
         compositeDisposable = new CompositeDisposable();
 
-        gitHubUrlViewModel.toObservable()
+        Observable<CharSequence> charSequenceObservable = RxTextView.textChangeEvents(editTextIssuesUrl)
+                .skipInitialValue()
+                .map(TextViewTextChangeEvent::text);
+
+        gitHubUrlViewModel.getIssues(charSequenceObservable)
                 .subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
-                .doOnNext(consumer -> Log.i(TAG, "Received consumer" + consumer))
                 .doOnError(throwable -> {
-                    Log.e(TAG, "Got error2 " + throwable.getMessage());
+                    if (throwable instanceof HttpException) {
+                        showErrorMessage(throwable.getMessage());
+                    }
                 })
-                .doOnNext(consumer -> showLoader())
-                .onErrorResumeNext(throwable -> {
+                .retry()
+                .subscribe(this::showIssues);
+
+        /*gitHubUrlViewModel.toObservable()
+                .subscribeOn(Schedulers.io())
+                .observeOn(AndroidSchedulers.mainThread())
+                .doOnError(throwable -> {
                     hideLoader();
-                    showErrorMessage(throwable.getMessage());
-                    return Observable.empty();
+                    if (throwable instanceof HttpException) {
+                        showErrorMessage(throwable.getMessage());
+                    }
                 })
-                .doOnNext(consumer -> Log.i(TAG, "Received consumer2 " + consumer))
-                .subscribe(
-                        issues -> {
-                            hideLoader();
-                            showIssues(issues);
-                        },
-                        throwable -> {
-                            throw new AssertionError(throwable.getMessage());
-                        });
+                .retry()
+                .subscribe(issues -> {
+                    hideLoader();
+                    showIssues(issues);
+                });
 
         editTextIssuesUrl.addTextChangedListener(new TextWatcher() {
             @Override
@@ -97,7 +104,7 @@ public class GitHubUrlActivity
             public void afterTextChanged(Editable s) {
 
             }
-        });
+        });*/
     }
 
     @Override
